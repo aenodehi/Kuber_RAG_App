@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rag-app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: rag-app
+  template:
+    metadata:
+      labels:
+        app: rag-app
+    spec:
+      containers:
+      - name: rag-app
+        image: aenodehi/rag-app:latest
+        ports:
+        - containerPort: 8501
+        env:
+        - name: GROQ_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: api-secrets
+              key: GROQ_API_KEY
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: api-secrets
+              key: HF_TOKEN
+        volumeMounts:
+        - name: maintenance-docs
+          mountPath: /app/maintenance
+      volumes:
+      - name: maintenance-docs
+        persistentVolumeClaim:
+          claimName: maintenance-pvc
+      imagePullSecrets:
+        - name: my-dockerhub-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rag-service
+spec:
+  selector:
+    app: rag-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8501
+  type: LoadBalancer
